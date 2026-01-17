@@ -607,13 +607,24 @@ def render_tab_visualization(settings: dict):
         st.warning("フィルタ条件に一致するデータがありません")
         return
 
-    # クラスタリング実行ボタン
-    col1, col2 = st.columns([1, 3])
+    # クラスタリング設定と実行
+    col1, col2, col3 = st.columns([1, 1, 2])
 
     with col1:
-        run_clustering = st.button("クラスタリング実行", type="primary")
+        n_clusters = st.number_input(
+            "クラスタ数",
+            min_value=2,
+            max_value=30,
+            value=8,
+            step=1,
+            help="KMeansのクラスタ数 / HDBSCANの目安"
+        )
+        settings['kmeans_n'] = n_clusters
 
     with col2:
+        run_clustering = st.button("クラスタリング実行", type="primary")
+
+    with col3:
         if settings['use_api'] and not st.session_state.llm_provider:
             st.warning("APIキーが未設定です。TF-IDFモードに切り替えるか、サイドバーでキーを設定してください")
         elif settings['use_api'] and st.session_state.llm_provider and not st.session_state.llm_provider.supports_embedding:
@@ -644,12 +655,20 @@ def render_tab_visualization(settings: dict):
         # 散布図
         st.subheader("UMAP 2D散布図")
 
-        # ハイライトクラスタ選択
-        cluster_options = ['すべて表示'] + [
-            f"{cid}: {cluster_info.get(cid, {}).get('label', f'クラスタ{cid}')}"
-            for cid in sorted(set(result.labels)) if cid != -1
-        ]
-        highlight_selection = st.selectbox("クラスタをハイライト", cluster_options)
+        # 散布図オプション
+        opt_col1, opt_col2 = st.columns([2, 1])
+
+        with opt_col1:
+            # ハイライトクラスタ選択
+            cluster_options = ['すべて表示'] + [
+                f"{cid}: {cluster_info.get(cid, {}).get('label', f'クラスタ{cid}')}"
+                for cid in sorted(set(result.labels)) if cid != -1
+            ]
+            highlight_selection = st.selectbox("クラスタをハイライト", cluster_options)
+
+        with opt_col2:
+            # ラベル表示切り替え
+            show_labels = st.checkbox("クラスタ名を表示", value=True)
 
         highlight_cluster = None
         if highlight_selection != 'すべて表示':
@@ -660,7 +679,8 @@ def render_tab_visualization(settings: dict):
             result.embeddings_2d,
             result.labels,
             cluster_info,
-            highlight_cluster=highlight_cluster
+            highlight_cluster=highlight_cluster,
+            show_labels=show_labels
         )
         st.plotly_chart(fig, use_container_width=True)
 

@@ -178,14 +178,18 @@ class ClusterLabeler:
 このクラスタの内容を分析し、以下の形式で回答してください：
 
 【ラベル】
-（このクラスタを表す日本語ラベル、20〜30文字程度で具体的に）
+（このクラスタを端的に表す具体的な日本語ラベル、15〜25文字程度。「〜〜関連」「〜〜について」などの曖昧な表現は避け、何をするのか/何であるかを明確に示すこと。例：「省エネ設備への更新計画」「従業員の健康管理体制強化」など）
 
 【特徴説明】
-（このクラスタの特徴を3〜5行で説明）
+（このクラスタの特徴を詳細に説明してください。以下の点を含めること：
+・このクラスタに含まれるテキストの共通テーマや目的
+・具体的にどのような取り組み/内容が含まれているか
+・他のクラスタと区別される特徴的なポイント
+5〜8行程度で具体的に記述）
 
 回答："""
 
-        response = self.llm_provider.generate(prompt, max_tokens=500)
+        response = self.llm_provider.generate(prompt, max_tokens=800)
 
         # レスポンスをパース
         label = f"クラスタ {cluster_id}"
@@ -213,13 +217,15 @@ class ClusterLabeler:
     ) -> tuple:
         """フォールバック：頻出語からラベルを生成"""
         if frequent_words:
-            # 頻出語を組み合わせてラベルを作成（切り詰めなし）
-            if len(frequent_words) >= 2:
-                label = f"{frequent_words[0]}・{frequent_words[1]}関連"
+            # 頻出語を組み合わせてラベルを作成
+            if len(frequent_words) >= 3:
+                label = f"{frequent_words[0]}・{frequent_words[1]}・{frequent_words[2]}"
+            elif len(frequent_words) >= 2:
+                label = f"{frequent_words[0]}・{frequent_words[1]}"
             else:
-                label = f"{frequent_words[0]}関連"
+                label = frequent_words[0]
             words_desc = "、".join(frequent_words[:5])
-            description = f"このクラスタは「{words_desc}」などのキーワードを含むテキストで構成されています。"
+            description = f"このクラスタは「{words_desc}」などのキーワードを含むテキストで構成されています。主に{frequent_words[0]}に関する取り組みや宣言が集まっています。"
         else:
             label = f"クラスタ {cluster_id}"
             description = "このクラスタの特徴を分析中です。"
@@ -264,7 +270,7 @@ class ClusterLabeler:
 【頻出語】
 {words_str}
 
-新しいラベル（20〜30文字程度の日本語で具体的に）："""
+新しいラベル（15〜25文字程度の具体的な日本語。「〜〜関連」「〜〜について」などの曖昧な表現は避け、何をするのか/何であるかを明確に示すこと）："""
 
         try:
             response = self.llm_provider.generate(prompt, max_tokens=100)

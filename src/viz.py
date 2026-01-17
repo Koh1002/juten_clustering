@@ -19,6 +19,7 @@ def create_scatter_plot(
     labels: np.ndarray,
     cluster_info: Optional[Dict[int, Dict]] = None,
     highlight_cluster: Optional[int] = None,
+    show_labels: bool = True,
     title: str = "クラスタリング結果（UMAP 2D）",
     max_text_length: int = 100
 ) -> go.Figure:
@@ -31,6 +32,7 @@ def create_scatter_plot(
         labels: クラスタラベル配列
         cluster_info: クラスタ情報辞書（ラベル名など）
         highlight_cluster: ハイライトするクラスタID（Noneで全表示）
+        show_labels: グラフ内にクラスタ名ラベルを表示するか
         title: グラフタイトル
         max_text_length: ホバーテキストの最大長
 
@@ -146,30 +148,31 @@ def create_scatter_plot(
 
     # クラスタ名をグラフエリア内に表示（各クラスタの中心に□で囲んだラベル）
     annotations = []
-    for cluster_id in unique_clusters:
-        if cluster_id in cluster_centers:
-            center_x, center_y = cluster_centers[cluster_id]
+    if show_labels:
+        for cluster_id in unique_clusters:
+            if cluster_id in cluster_centers:
+                center_x, center_y = cluster_centers[cluster_id]
 
-            if cluster_info and cluster_id in cluster_info:
-                label_text = cluster_info[cluster_id].get('label', f'クラスタ {cluster_id}')
-            else:
-                label_text = 'ノイズ' if cluster_id == -1 else f'クラスタ {cluster_id}'
+                if cluster_info and cluster_id in cluster_info:
+                    label_text = cluster_info[cluster_id].get('label', f'クラスタ {cluster_id}')
+                else:
+                    label_text = 'ノイズ' if cluster_id == -1 else f'クラスタ {cluster_id}'
 
-            # ハイライト時は対象クラスタのみ表示
-            if highlight_cluster is not None and cluster_id != highlight_cluster:
-                continue
+                # ハイライト時は対象クラスタのみ表示
+                if highlight_cluster is not None and cluster_id != highlight_cluster:
+                    continue
 
-            annotations.append(dict(
-                x=center_x,
-                y=center_y,
-                text=label_text,
-                showarrow=False,
-                font=dict(size=11, color='black', family='sans-serif'),
-                bgcolor='rgba(255, 255, 255, 0.85)',
-                bordercolor=cluster_colors.get(cluster_id, 'gray'),
-                borderwidth=2,
-                borderpad=4,
-            ))
+                annotations.append(dict(
+                    x=center_x,
+                    y=center_y,
+                    text=label_text,
+                    showarrow=False,
+                    font=dict(size=11, color='black', family='sans-serif'),
+                    bgcolor='rgba(255, 255, 255, 0.85)',
+                    bordercolor=cluster_colors.get(cluster_id, 'gray'),
+                    borderwidth=2,
+                    borderpad=4,
+                ))
 
     fig.update_layout(
         title=title,
