@@ -20,7 +20,7 @@ def create_scatter_plot(
     cluster_info: Optional[Dict[int, Dict]] = None,
     highlight_cluster: Optional[int] = None,
     title: str = "クラスタリング結果（UMAP 2D）",
-    max_text_length: int = 50
+    max_text_length: int = 100
 ) -> go.Figure:
     """
     UMAP 2D散布図を作成
@@ -43,7 +43,7 @@ def create_scatter_plot(
     plot_df['y'] = embeddings_2d[:, 1]
     plot_df['cluster'] = labels
 
-    # クラスタラベル名を追加
+    # クラスタラベル名を追加（切り詰めなし）
     if cluster_info:
         plot_df['cluster_label'] = plot_df['cluster'].apply(
             lambda c: cluster_info.get(c, {}).get('label', f'クラスタ {c}')
@@ -53,7 +53,7 @@ def create_scatter_plot(
             lambda c: 'ノイズ' if c == -1 else f'クラスタ {c}'
         )
 
-    # ホバーテキスト用に短縮
+    # ホバーテキスト用に短縮（ホバーのみ）
     def truncate(text, max_len):
         if pd.isna(text) or not text:
             return ""
@@ -95,6 +95,15 @@ def create_scatter_plot(
     # Plotlyでプロット
     fig = go.Figure()
 
+    # 各クラスタの中心座標を計算
+    cluster_centers = {}
+    for cluster_id in unique_clusters:
+        cluster_data = plot_df[plot_df['cluster'] == cluster_id]
+        if len(cluster_data) > 0:
+            center_x = cluster_data['x'].mean()
+            center_y = cluster_data['y'].mean()
+            cluster_centers[cluster_id] = (center_x, center_y)
+
     for cluster_id in unique_clusters:
         cluster_data = plot_df[plot_df['cluster'] == cluster_id]
 
@@ -115,6 +124,7 @@ def create_scatter_plot(
             cluster_data['詳細_short']
         ])
 
+        # フルラベル名（切り詰めなし）
         label_name = cluster_data['cluster_label'].iloc[0] if len(cluster_data) > 0 else f'クラスタ {cluster_id}'
 
         opacity = 1.0 if highlight_cluster is None else (1.0 if cluster_id == highlight_cluster else 0.2)
@@ -134,6 +144,33 @@ def create_scatter_plot(
             hovertemplate=hover_template
         ))
 
+    # クラスタ名をグラフエリア内に表示（各クラスタの中心に□で囲んだラベル）
+    annotations = []
+    for cluster_id in unique_clusters:
+        if cluster_id in cluster_centers:
+            center_x, center_y = cluster_centers[cluster_id]
+
+            if cluster_info and cluster_id in cluster_info:
+                label_text = cluster_info[cluster_id].get('label', f'クラスタ {cluster_id}')
+            else:
+                label_text = 'ノイズ' if cluster_id == -1 else f'クラスタ {cluster_id}'
+
+            # ハイライト時は対象クラスタのみ表示
+            if highlight_cluster is not None and cluster_id != highlight_cluster:
+                continue
+
+            annotations.append(dict(
+                x=center_x,
+                y=center_y,
+                text=label_text,
+                showarrow=False,
+                font=dict(size=11, color='black', family='sans-serif'),
+                bgcolor='rgba(255, 255, 255, 0.85)',
+                bordercolor=cluster_colors.get(cluster_id, 'gray'),
+                borderwidth=2,
+                borderpad=4,
+            ))
+
     fig.update_layout(
         title=title,
         xaxis_title="UMAP 1",
@@ -141,7 +178,8 @@ def create_scatter_plot(
         legend_title="クラスタ",
         hovermode='closest',
         height=600,
-        template='plotly_white'
+        template='plotly_white',
+        annotations=annotations
     )
 
     return fig

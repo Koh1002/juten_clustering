@@ -178,7 +178,7 @@ class ClusterLabeler:
 このクラスタの内容を分析し、以下の形式で回答してください：
 
 【ラベル】
-（このクラスタを表す短い日本語ラベル、10文字以内）
+（このクラスタを表す日本語ラベル、20〜30文字程度で具体的に）
 
 【特徴説明】
 （このクラスタの特徴を3〜5行で説明）
@@ -193,7 +193,8 @@ class ClusterLabeler:
 
         label_match = re.search(r'【ラベル】\s*(.+?)(?=【|$)', response, re.DOTALL)
         if label_match:
-            label = label_match.group(1).strip()[:20]
+            # ラベルは切り詰めずにそのまま使用
+            label = label_match.group(1).strip()
 
         desc_match = re.search(r'【特徴説明】\s*(.+?)(?=【|$)', response, re.DOTALL)
         if desc_match:
@@ -212,7 +213,11 @@ class ClusterLabeler:
     ) -> tuple:
         """フォールバック：頻出語からラベルを生成"""
         if frequent_words:
-            label = f"{frequent_words[0]}関連" if len(frequent_words[0]) <= 5 else frequent_words[0][:5]
+            # 頻出語を組み合わせてラベルを作成（切り詰めなし）
+            if len(frequent_words) >= 2:
+                label = f"{frequent_words[0]}・{frequent_words[1]}関連"
+            else:
+                label = f"{frequent_words[0]}関連"
             words_desc = "、".join(frequent_words[:5])
             description = f"このクラスタは「{words_desc}」などのキーワードを含むテキストで構成されています。"
         else:
@@ -259,11 +264,12 @@ class ClusterLabeler:
 【頻出語】
 {words_str}
 
-新しいラベル（10文字以内の日本語）："""
+新しいラベル（20〜30文字程度の日本語で具体的に）："""
 
         try:
             response = self.llm_provider.generate(prompt, max_tokens=100)
-            new_label = response.strip()[:20]
+            # ラベルは切り詰めずにそのまま使用
+            new_label = response.strip()
         except Exception as e:
             logger.error(f"Label regeneration failed: {e}")
             new_label = f"クラスタ {cluster_id} (v2)"

@@ -177,10 +177,17 @@ def calculate_category_column_score(values: list) -> dict:
 def create_document_text(category_name: str, summary: str, detail: str) -> str:
     """
     クラスタリング用の文書テキストを生成
+
+    詳細テキストを優先してクラスタリングに使用。
+    詳細がある場合は詳細のみ、ない場合は概要を使用。
     """
-    parts = [category_name]
-    if summary:
-        parts.append(summary)
-    if detail:
-        parts.append(detail)
-    return ' / '.join(parts)
+    # 詳細があれば詳細を優先（詳細でクラスタリングしたい）
+    if detail and detail.strip():
+        # 詳細がある場合：カテゴリ + 詳細
+        return f"{category_name} / {detail}"
+    elif summary and summary.strip():
+        # 詳細がない場合：カテゴリ + 概要
+        return f"{category_name} / {summary}"
+    else:
+        # どちらもない場合
+        return category_name
