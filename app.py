@@ -45,19 +45,29 @@ html, body, [class*="css"] {
     font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
 }
 
-/* メインコンテンツ */
+/* メインコンテンツ - 上部余白を最小化 */
 .main .block-container {
-    padding-top: 1rem;
+    padding-top: 0.5rem;
     padding-bottom: 1rem;
     max-width: 1200px;
 }
 
+/* Streamlitのデフォルトヘッダー余白を削除 */
+.stApp > header {
+    height: 0 !important;
+}
+
+.main > div:first-child {
+    padding-top: 0 !important;
+}
+
 /* ヘッダー・タイトル */
 h1 {
-    font-size: 1.4rem !important;
-    font-weight: 500 !important;
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
     color: #1a1a1a !important;
-    margin-bottom: 0.5rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.3rem !important;
     letter-spacing: -0.02em;
 }
 
