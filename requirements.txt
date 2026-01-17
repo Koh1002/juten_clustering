@@ -1,9 +1,12 @@
 # Streamlit
-streamlit>=1.28.0
+streamlit>=1.28.0,<2.0.0
 
 # Excel processing
 openpyxl>=3.1.2
-pandas>=2.0.0
+pandas>=2.0.0,<3.0.0
+
+# Arrow (explicit to avoid build issues)
+pyarrow>=14.0.0
 
 # Clustering
 scikit-learn>=1.3.0
@@ -13,7 +16,7 @@ umap-learn>=0.5.4
 # Visualization
 plotly>=5.18.0
 
-# LLM SDKs
+# LLM SDKs (optional - install only what you need)
 openai>=1.0.0
 google-generativeai>=0.3.0
 anthropic>=0.8.0
@@ -25,4 +28,4 @@ janome>=0.5.0
 requests>=2.31.0
 
 # Numpy
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0

@@ -1,0 +1,12 @@
+# Minimal requirements (without LLM SDKs)
+# Use this if you have installation issues
+# TF-IDF mode will work without API keys
+
+streamlit
+openpyxl
+pandas
+pyarrow
+scikit-learn
+plotly
+numpy
+requests
