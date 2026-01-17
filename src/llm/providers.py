@@ -1,6 +1,11 @@
 """
 LLMプロバイダ抽象化モジュール
 OpenAI / Gemini / Claude 対応
+
+モデル固定指定版（2026年1月）:
+- OpenAI: gpt-5.2 / text-embedding-3-large
+- Gemini: gemini-3-pro-preview / gemini-embedding-001
+- Claude: claude-opus-4-5 (埋め込み非対応)
 """
 
 import re
@@ -32,10 +37,10 @@ class LLMProvider(ABC):
         """APIキーの検証"""
         pass
 
-    @abstractmethod
     def list_models(self) -> List[Dict]:
-        """利用可能モデル一覧を取得"""
-        pass
+        """利用可能モデル一覧を取得（固定リストを返す）"""
+        self.last_updated = datetime.now()
+        return self.available_models
 
     @abstractmethod
     def pick_latest(self, task_type: str) -> Optional[str]:
@@ -72,25 +77,20 @@ class OpenAIProvider(LLMProvider):
     name = "OpenAI"
     supports_embedding = True
 
-    # 埋め込みモデル優先順位
-    EMBEDDING_PRIORITY = [
-        'text-embedding-3-large',
-        'text-embedding-3-small',
-        'text-embedding-ada-002',
-    ]
-
-    # 生成モデル優先順位
-    GENERATION_PRIORITY = [
-        'gpt-4o',
-        'gpt-4o-mini',
-        'gpt-4-turbo',
-        'gpt-4',
-        'gpt-3.5-turbo',
-    ]
+    # 固定モデル（2026年1月）
+    DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
+    DEFAULT_GENERATION_MODEL = "gpt-5.2"
 
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self._client = None
+        # 固定モデルを設定
+        self.embedding_model = self.DEFAULT_EMBEDDING_MODEL
+        self.generation_model = self.DEFAULT_GENERATION_MODEL
+        self.available_models = [
+            {'id': self.DEFAULT_GENERATION_MODEL, 'type': 'generation'},
+            {'id': self.DEFAULT_EMBEDDING_MODEL, 'type': 'embedding'},
+        ]
 
     def _get_client(self):
         if self._client is None:
@@ -102,76 +102,31 @@ class OpenAIProvider(LLMProvider):
         return self._client
 
     def validate_key(self) -> bool:
+        """軽量な検証（埋め込みAPIで1トークンだけ試行）"""
         try:
             client = self._get_client()
-            # モデル一覧取得で検証
-            client.models.list()
+            # 最小の埋め込みリクエストで検証
+            client.embeddings.create(
+                model=self.DEFAULT_EMBEDDING_MODEL,
+                input="test"
+            )
+            self.last_updated = datetime.now()
             return True
         except Exception as e:
             self.validation_error = str(e)
             logger.error(f"OpenAI validation error: {e}")
             return False
 
-    def list_models(self) -> List[Dict]:
-        try:
-            client = self._get_client()
-            models = client.models.list()
-            self.available_models = []
-
-            for model in models.data:
-                model_info = {
-                    'id': model.id,
-                    'created': model.created,
-                    'owned_by': model.owned_by,
-                }
-                self.available_models.append(model_info)
-
-            # 作成日でソート
-            self.available_models.sort(key=lambda x: x.get('created', 0), reverse=True)
-            self.last_updated = datetime.now()
-            return self.available_models
-
-        except Exception as e:
-            logger.error(f"OpenAI list_models error: {e}")
-            return []
-
     def pick_latest(self, task_type: str) -> Optional[str]:
-        if not self.available_models:
-            self.list_models()
-
-        model_ids = [m['id'] for m in self.available_models]
-
+        """固定モデルを返す"""
+        self.last_updated = datetime.now()
         if task_type == 'embedding':
-            for pref in self.EMBEDDING_PRIORITY:
-                if pref in model_ids:
-                    self.embedding_model = pref
-                    return pref
-            # フォールバック：embedding含むモデルを探索
-            for mid in model_ids:
-                if 'embedding' in mid.lower():
-                    self.embedding_model = mid
-                    return mid
-
+            return self.embedding_model
         elif task_type == 'generation':
-            for pref in self.GENERATION_PRIORITY:
-                if pref in model_ids:
-                    self.generation_model = pref
-                    return pref
-            # フォールバック：gptモデルを探索
-            for mid in model_ids:
-                if 'gpt' in mid.lower() and 'instruct' not in mid.lower():
-                    self.generation_model = mid
-                    return mid
-
+            return self.generation_model
         return None
 
     def embed(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
-        if not self.embedding_model:
-            self.pick_latest('embedding')
-
-        if not self.embedding_model:
-            raise ValueError("埋め込みモデルが見つかりません")
-
         client = self._get_client()
         all_embeddings = []
 
@@ -194,12 +149,6 @@ class OpenAIProvider(LLMProvider):
         return all_embeddings
 
     def generate(self, prompt: str, max_tokens: int = 1000) -> str:
-        if not self.generation_model:
-            self.pick_latest('generation')
-
-        if not self.generation_model:
-            raise ValueError("生成モデルが見つかりません")
-
         client = self._get_client()
         response = client.chat.completions.create(
             model=self.generation_model,
@@ -216,25 +165,20 @@ class GeminiProvider(LLMProvider):
     name = "Gemini"
     supports_embedding = True
 
-    # 埋め込みモデル優先順位
-    EMBEDDING_PRIORITY = [
-        'text-embedding-004',
-        'embedding-001',
-    ]
-
-    # 生成モデル優先順位
-    GENERATION_PRIORITY = [
-        'gemini-2.0-flash-exp',
-        'gemini-1.5-pro-latest',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-flash',
-        'gemini-pro',
-    ]
+    # 固定モデル（2026年1月）
+    DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001"
+    DEFAULT_GENERATION_MODEL = "gemini-3-pro-preview"
 
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self._configured = False
+        # 固定モデルを設定
+        self.embedding_model = self.DEFAULT_EMBEDDING_MODEL
+        self.generation_model = self.DEFAULT_GENERATION_MODEL
+        self.available_models = [
+            {'id': self.DEFAULT_GENERATION_MODEL, 'type': 'generation'},
+            {'id': self.DEFAULT_EMBEDDING_MODEL, 'type': 'embedding'},
+        ]
 
     def _configure(self):
         if not self._configured:
@@ -246,78 +190,35 @@ class GeminiProvider(LLMProvider):
                 raise ImportError("google-generativeai パッケージがインストールされていません")
 
     def validate_key(self) -> bool:
+        """軽量な検証（埋め込みAPIで1トークンだけ試行）"""
         try:
             self._configure()
             import google.generativeai as genai
-            # モデル一覧取得で検証
-            list(genai.list_models())
+            # 最小の埋め込みリクエストで検証
+            genai.embed_content(
+                model=f"models/{self.DEFAULT_EMBEDDING_MODEL}",
+                content="test",
+                task_type="clustering"
+            )
+            self.last_updated = datetime.now()
             return True
         except Exception as e:
             self.validation_error = str(e)
             logger.error(f"Gemini validation error: {e}")
             return False
 
-    def list_models(self) -> List[Dict]:
-        try:
-            self._configure()
-            import google.generativeai as genai
-            models = list(genai.list_models())
-            self.available_models = []
-
-            for model in models:
-                model_info = {
-                    'id': model.name.replace('models/', ''),
-                    'display_name': getattr(model, 'display_name', model.name),
-                    'supported_methods': list(model.supported_generation_methods) if hasattr(model, 'supported_generation_methods') else [],
-                }
-                self.available_models.append(model_info)
-
-            self.last_updated = datetime.now()
-            return self.available_models
-
-        except Exception as e:
-            logger.error(f"Gemini list_models error: {e}")
-            return []
-
     def pick_latest(self, task_type: str) -> Optional[str]:
-        if not self.available_models:
-            self.list_models()
-
-        model_ids = [m['id'] for m in self.available_models]
-
+        """固定モデルを返す"""
+        self.last_updated = datetime.now()
         if task_type == 'embedding':
-            for pref in self.EMBEDDING_PRIORITY:
-                if pref in model_ids:
-                    self.embedding_model = pref
-                    return pref
-            # フォールバック
-            for mid in model_ids:
-                if 'embedding' in mid.lower():
-                    self.embedding_model = mid
-                    return mid
-
+            return self.embedding_model
         elif task_type == 'generation':
-            for pref in self.GENERATION_PRIORITY:
-                if pref in model_ids:
-                    self.generation_model = pref
-                    return pref
-            # フォールバック
-            for mid in model_ids:
-                if 'gemini' in mid.lower():
-                    self.generation_model = mid
-                    return mid
-
+            return self.generation_model
         return None
 
     def embed(self, texts: List[str], batch_size: int = 50) -> List[List[float]]:
         self._configure()
         import google.generativeai as genai
-
-        if not self.embedding_model:
-            self.pick_latest('embedding')
-
-        if not self.embedding_model:
-            raise ValueError("埋め込みモデルが見つかりません")
 
         all_embeddings = []
 
@@ -347,12 +248,6 @@ class GeminiProvider(LLMProvider):
         self._configure()
         import google.generativeai as genai
 
-        if not self.generation_model:
-            self.pick_latest('generation')
-
-        if not self.generation_model:
-            raise ValueError("生成モデルが見つかりません")
-
         model = genai.GenerativeModel(self.generation_model)
         response = model.generate_content(
             prompt,
@@ -370,20 +265,17 @@ class ClaudeProvider(LLMProvider):
     name = "Claude"
     supports_embedding = False  # Claudeは埋め込みAPIを提供していない
 
-    # 生成モデル優先順位
-    GENERATION_PRIORITY = [
-        'claude-opus-4-20250514',
-        'claude-sonnet-4-20250514',
-        'claude-3-5-sonnet-20241022',
-        'claude-3-5-sonnet-20240620',
-        'claude-3-opus-20240229',
-        'claude-3-sonnet-20240229',
-        'claude-3-haiku-20240307',
-    ]
+    # 固定モデル（2026年1月）
+    DEFAULT_GENERATION_MODEL = "claude-opus-4-5"
 
     def __init__(self, api_key: str):
         super().__init__(api_key)
         self._client = None
+        # 固定モデルを設定
+        self.generation_model = self.DEFAULT_GENERATION_MODEL
+        self.available_models = [
+            {'id': self.DEFAULT_GENERATION_MODEL, 'type': 'generation'},
+        ]
 
     def _get_client(self):
         if self._client is None:
@@ -395,53 +287,30 @@ class ClaudeProvider(LLMProvider):
         return self._client
 
     def validate_key(self) -> bool:
+        """軽量な検証（最小リクエスト）"""
         try:
             client = self._get_client()
             # 最小リクエストで検証
             response = client.messages.create(
-                model="claude-3-haiku-20240307",
+                model=self.DEFAULT_GENERATION_MODEL,
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hi"}]
             )
+            self.last_updated = datetime.now()
             return True
         except Exception as e:
             self.validation_error = str(e)
             logger.error(f"Claude validation error: {e}")
             return False
 
-    def list_models(self) -> List[Dict]:
-        # Claudeはモデル一覧APIがないため、既知のモデルを返す
-        self.available_models = [
-            {'id': m, 'type': 'generation'} for m in self.GENERATION_PRIORITY
-        ]
-        self.last_updated = datetime.now()
-        return self.available_models
-
     def pick_latest(self, task_type: str) -> Optional[str]:
+        """固定モデルを返す"""
+        self.last_updated = datetime.now()
         if task_type == 'embedding':
             # Claudeは埋め込みをサポートしない
             return None
-
         elif task_type == 'generation':
-            # 優先順位の最初から利用可能なものを選択
-            for model in self.GENERATION_PRIORITY:
-                try:
-                    # 実際に利用可能か確認
-                    client = self._get_client()
-                    response = client.messages.create(
-                        model=model,
-                        max_tokens=10,
-                        messages=[{"role": "user", "content": "test"}]
-                    )
-                    self.generation_model = model
-                    return model
-                except Exception:
-                    continue
-
-            # フォールバック
-            self.generation_model = self.GENERATION_PRIORITY[-1]
             return self.generation_model
-
         return None
 
     def embed(self, texts: List[str]) -> List[List[float]]:
@@ -451,12 +320,6 @@ class ClaudeProvider(LLMProvider):
         )
 
     def generate(self, prompt: str, max_tokens: int = 1000) -> str:
-        if not self.generation_model:
-            self.pick_latest('generation')
-
-        if not self.generation_model:
-            raise ValueError("生成モデルが見つかりません")
-
         client = self._get_client()
         response = client.messages.create(
             model=self.generation_model,
@@ -472,13 +335,13 @@ def detect_provider_by_key(api_key: str) -> Optional[str]:
     """
     key = api_key.strip()
 
+    # Anthropic: sk-ant-で始まる（OpenAIより先にチェック）
+    if key.startswith('sk-ant-'):
+        return 'claude'
+
     # OpenAI: sk-で始まる
     if key.startswith('sk-'):
         return 'openai'
-
-    # Anthropic: sk-ant-で始まる
-    if key.startswith('sk-ant-'):
-        return 'claude'
 
     # Gemini/Google: AIzaで始まることが多い
     if key.startswith('AIza'):
@@ -500,14 +363,15 @@ def detect_provider(api_key: str) -> Tuple[Optional[LLMProvider], str]:
     # ヒューリスティックで推定
     hint = detect_provider_by_key(key)
 
-    # 推定順序を決定
+    # 推定されたプロバイダのみ試行（高速化）
     if hint == 'openai':
-        providers_to_try = [OpenAIProvider, GeminiProvider, ClaudeProvider]
+        providers_to_try = [OpenAIProvider]
     elif hint == 'claude':
-        providers_to_try = [ClaudeProvider, OpenAIProvider, GeminiProvider]
+        providers_to_try = [ClaudeProvider]
     elif hint == 'gemini':
-        providers_to_try = [GeminiProvider, OpenAIProvider, ClaudeProvider]
+        providers_to_try = [GeminiProvider]
     else:
+        # 推定できない場合は全て試行
         providers_to_try = [OpenAIProvider, GeminiProvider, ClaudeProvider]
 
     errors = []
