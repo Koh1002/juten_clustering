@@ -31,40 +31,235 @@ from src.utils import create_document_text, truncate_text, logger
 
 # ページ設定
 st.set_page_config(
-    page_title="テキストクラスタリング",
-    page_icon="📊",
+    page_title="Text Clustering",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# カスタムCSS
+# カスタムCSS - シャープでモダンなデザイン
 st.markdown("""
 <style>
+/* 全体のフォント・背景 */
+html, body, [class*="css"] {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+}
+
+/* メインコンテンツ */
+.main .block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    max-width: 1200px;
+}
+
+/* ヘッダー・タイトル */
+h1 {
+    font-size: 1.4rem !important;
+    font-weight: 500 !important;
+    color: #1a1a1a !important;
+    margin-bottom: 0.5rem !important;
+    letter-spacing: -0.02em;
+}
+
+h2 {
+    font-size: 1.1rem !important;
+    font-weight: 500 !important;
+    color: #333 !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+h3 {
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    color: #444 !important;
+}
+
+/* サイドバー - 深い緑 */
+[data-testid="stSidebar"] {
+    background-color: #1a3a2f !important;
+}
+
+[data-testid="stSidebar"] * {
+    color: #e8f0ed !important;
+}
+
+[data-testid="stSidebar"] .stTextInput > div > div > input {
+    background-color: #2d4f42 !important;
+    border: 1px solid #3d6354 !important;
+    color: #fff !important;
+}
+
+[data-testid="stSidebar"] .stSelectbox > div > div {
+    background-color: #2d4f42 !important;
+    border: 1px solid #3d6354 !important;
+}
+
+[data-testid="stSidebar"] .stMultiSelect > div > div {
+    background-color: #2d4f42 !important;
+    border: 1px solid #3d6354 !important;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: #3d6354 !important;
+}
+
+[data-testid="stSidebar"] .stCheckbox label {
+    color: #c8d8d2 !important;
+}
+
+/* ボタン */
+.stButton > button {
+    background-color: #1a3a2f !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 0.4rem 1rem !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    transition: background-color 0.2s;
+}
+
+.stButton > button:hover {
+    background-color: #2d5244 !important;
+}
+
+.stButton > button[kind="primary"] {
+    background-color: #1a3a2f !important;
+}
+
+/* タブ */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.stTabs [data-baseweb="tab"] {
+    padding: 0.5rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    background-color: transparent;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    color: #1a3a2f;
+}
+
+.stTabs [aria-selected="true"] {
+    color: #1a3a2f !important;
+    border-bottom-color: #1a3a2f !important;
+    background-color: transparent !important;
+}
+
+/* メトリクス */
+[data-testid="stMetric"] {
+    background-color: #f8faf9;
+    padding: 0.8rem;
+    border-radius: 4px;
+    border-left: 3px solid #1a3a2f;
+}
+
+[data-testid="stMetric"] label {
+    font-size: 0.75rem !important;
+    color: #666 !important;
+}
+
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-size: 1.4rem !important;
+    font-weight: 500 !important;
+    color: #1a3a2f !important;
+}
+
+/* データフレーム */
+.stDataFrame {
+    font-size: 0.8rem;
+}
+
+/* エキスパンダー */
+.streamlit-expanderHeader {
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    color: #444 !important;
+}
+
+/* アラート */
+.stAlert {
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* クラスタカード */
 .cluster-card {
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-left: 4px solid #007bff;
+    background-color: #fafbfa;
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid #1a3a2f;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
+
 .cluster-header {
-    font-size: 1.2em;
-    font-weight: bold;
-    margin-bottom: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1a3a2f;
+    margin-bottom: 0.5rem;
 }
+
 .word-chip {
     display: inline-block;
-    background-color: #e9ecef;
-    padding: 4px 12px;
-    margin: 4px;
-    border-radius: 16px;
-    font-size: 0.9em;
+    background-color: #e8f0ed;
+    color: #1a3a2f;
+    padding: 3px 10px;
+    margin: 3px;
+    border-radius: 3px;
+    font-size: 0.8rem;
 }
+
 .stats-box {
-    background-color: #e7f3ff;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 10px 0;
+    background-color: #f8faf9;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid #e8f0ed;
+}
+
+/* ダウンロードボタン */
+.stDownloadButton > button {
+    background-color: transparent !important;
+    color: #1a3a2f !important;
+    border: 1px solid #1a3a2f !important;
+}
+
+.stDownloadButton > button:hover {
+    background-color: #f0f5f3 !important;
+}
+
+/* スピナー */
+.stSpinner > div {
+    border-top-color: #1a3a2f !important;
+}
+
+/* 成功・警告・エラーメッセージ */
+.stSuccess {
+    background-color: #e8f5e9 !important;
+    color: #1b5e20 !important;
+}
+
+.stWarning {
+    background-color: #fff8e1 !important;
+    color: #f57f17 !important;
+}
+
+.stError {
+    background-color: #ffebee !important;
+    color: #c62828 !important;
+}
+
+/* ファイルアップローダー非表示（使わないため） */
+[data-testid="stFileUploader"] {
+    display: none;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -92,10 +287,10 @@ def init_session_state():
 
 def render_sidebar():
     """サイドバーを描画"""
-    st.sidebar.title("⚙️ 設定")
+    st.sidebar.title("設定")
 
     # APIキー入力
-    st.sidebar.subheader("🔑 APIキー")
+    st.sidebar.subheader("APIキー")
     api_key = st.sidebar.text_input(
         "APIキー（OpenAI/Gemini/Claude）",
         type="password",
@@ -137,7 +332,7 @@ def render_sidebar():
     st.sidebar.divider()
 
     # クラスタリング設定
-    st.sidebar.subheader("🔧 クラスタリング設定")
+    st.sidebar.subheader("クラスタリング設定")
 
     use_api = st.sidebar.checkbox(
         "API埋め込みを使用",
@@ -161,7 +356,7 @@ def render_sidebar():
     st.sidebar.divider()
 
     # フィルタ設定
-    st.sidebar.subheader("🔍 フィルタ")
+    st.sidebar.subheader("フィルタ")
 
     filters = {
         'stores': [],
@@ -257,9 +452,9 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
 
 def render_tab_import():
     """データ取込/成形タブ"""
-    st.header("📥 データ取込・成形")
+    st.header("データ取込・成形")
 
-    st.subheader("📁 Excelファイル選択")
+    st.subheader("Excelファイル選択")
 
     col1, col2 = st.columns([2, 1])
 
@@ -277,7 +472,7 @@ def render_tab_import():
 
     with col2:
         if 'selected_files' in st.session_state and st.session_state['selected_files']:
-            if st.button("🗑️ 選択をクリア", key="btn_clear"):
+            if st.button("選択をクリア", key="btn_clear"):
                 st.session_state['selected_files'] = []
                 st.rerun()
 
@@ -287,7 +482,7 @@ def render_tab_import():
             for f in st.session_state['selected_files']:
                 st.write(f"- {os.path.basename(f)}")
 
-        if st.button("📊 ファイルを処理", type="primary", key="btn_process_local"):
+        if st.button("ファイルを処理", type="primary", key="btn_process_local"):
             process_files(file_paths=st.session_state['selected_files'])
 
     # 処理結果表示
@@ -318,7 +513,7 @@ def render_tab_import():
 
     # データプレビュー
     if st.session_state.df is not None:
-        st.subheader("📋 成形済みデータプレビュー")
+        st.subheader("成形済みデータプレビュー")
         df = st.session_state.df
 
         st.write(f"**総レコード数**: {len(df)}")
@@ -344,7 +539,7 @@ def render_tab_import():
         # CSVダウンロード
         csv_data = export_to_csv(df, include_cluster=False)
         st.download_button(
-            "📥 成形済みCSVをダウンロード",
+            "成形済みCSVをダウンロード",
             csv_data,
             file_name=f"formatted_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv"
@@ -383,7 +578,7 @@ def process_files(file_paths=None, file_objects=None):
 
 def render_tab_visualization(settings: dict):
     """可視化タブ"""
-    st.header("📊 可視化")
+    st.header("可視化")
 
     if st.session_state.df is None:
         st.info("まず「データ取込」タブでファイルを読み込んでください")
@@ -406,7 +601,7 @@ def render_tab_visualization(settings: dict):
     col1, col2 = st.columns([1, 3])
 
     with col1:
-        run_clustering = st.button("🔄 クラスタリング実行", type="primary")
+        run_clustering = st.button("クラスタリング実行", type="primary")
 
     with col2:
         if settings['use_api'] and not st.session_state.llm_provider:
@@ -423,7 +618,7 @@ def render_tab_visualization(settings: dict):
         cluster_info = st.session_state.cluster_info
 
         # サマリ統計
-        st.subheader("📈 クラスタリング結果")
+        st.subheader("クラスタリング結果")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -437,7 +632,7 @@ def render_tab_visualization(settings: dict):
                 st.metric("シルエットスコア", f"{result.silhouette:.3f}")
 
         # 散布図
-        st.subheader("🗺️ UMAP 2D散布図")
+        st.subheader("UMAP 2D散布図")
 
         # ハイライトクラスタ選択
         cluster_options = ['すべて表示'] + [
@@ -471,7 +666,7 @@ def render_tab_visualization(settings: dict):
             st.plotly_chart(fig_cat, use_container_width=True)
 
         # CSVダウンロード
-        st.subheader("📥 ダウンロード")
+        st.subheader("ダウンロード")
 
         col1, col2 = st.columns(2)
 
@@ -480,7 +675,7 @@ def render_tab_visualization(settings: dict):
                 df_filtered, result.labels, cluster_info, include_cluster=True
             )
             st.download_button(
-                "📥 クラスタ付きCSV（フィルタ後）",
+                "クラスタ付きCSV（フィルタ後）",
                 csv_with_cluster,
                 file_name=f"clustered_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
@@ -538,7 +733,7 @@ def run_clustering_pipeline(df: pd.DataFrame, settings: dict):
 
 def render_tab_report():
     """クラスタ一覧レポートタブ"""
-    st.header("📋 クラスタ一覧レポート")
+    st.header("クラスタ一覧レポート")
 
     if st.session_state.clustering_result is None:
         st.info("まず「可視化」タブでクラスタリングを実行してください")
@@ -552,7 +747,7 @@ def render_tab_report():
         df_filtered = st.session_state.df
 
     # 全体サマリ
-    st.subheader("📊 全体サマリ")
+    st.subheader("全体サマリ")
 
     labeler = ClusterLabeler()
     summary = labeler.get_summary_stats(df_filtered, result.labels)
@@ -576,7 +771,7 @@ def render_tab_report():
     st.divider()
 
     # クラスタカード
-    st.subheader("🏷️ クラスタ詳細")
+    st.subheader("クラスタ詳細")
 
     # 別アイデアボタン用の状態
     if 'regenerate_cluster' not in st.session_state:
@@ -590,7 +785,7 @@ def render_tab_report():
             st.markdown(f"""
             <div class="cluster-card">
                 <div class="cluster-header">
-                    {'🔇' if cluster_id == -1 else '📁'} {info['label']} (ID: {cluster_id})
+                    {info['label']} (ID: {cluster_id})
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -605,11 +800,11 @@ def render_tab_report():
             with col2:
                 # 別アイデアボタン
                 if cluster_id != -1 and st.session_state.llm_provider:
-                    if st.button(f"💡 別アイデア", key=f"regen_{cluster_id}"):
+                    if st.button("別アイデア", key=f"regen_{cluster_id}"):
                         regenerate_label(cluster_id, df_filtered, result.labels)
 
                 # ハイライトボタン
-                if st.button(f"🔍 散布図で表示", key=f"highlight_{cluster_id}"):
+                if st.button("散布図で表示", key=f"highlight_{cluster_id}"):
                     st.session_state['highlight_cluster'] = cluster_id
                     st.info(f"「可視化」タブでクラスタ {cluster_id} をハイライトします")
 
@@ -655,17 +850,17 @@ def main():
     """メイン関数"""
     init_session_state()
 
-    st.title("📊 テキストクラスタリング アプリ")
-    st.caption("Talk to the City風のワークフロー: Embedding → UMAP → HDBSCAN → ラベリング → 可視化")
+    st.title("テキストクラスタリング")
+    st.caption("Embedding → UMAP → HDBSCAN → ラベリング → 可視化")
 
     # サイドバー
     settings = render_sidebar()
 
     # タブ
     tab1, tab2, tab3 = st.tabs([
-        "📥 データ取込/成形",
-        "📊 可視化",
-        "📋 クラスタ一覧レポート"
+        "データ取込/成形",
+        "可視化",
+        "クラスタ一覧レポート"
     ])
 
     with tab1:
