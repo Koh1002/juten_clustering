@@ -608,27 +608,38 @@ def render_tab_visualization(settings: dict):
         return
 
     # クラスタリング設定と実行
-    col1, col2, col3 = st.columns([1, 1, 2])
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
     with col1:
+        cluster_method = st.radio(
+            "手法",
+            ["KMeans（数指定）", "HDBSCAN（自動）"],
+            index=0,
+            horizontal=True
+        )
+        use_hdbscan = cluster_method == "HDBSCAN（自動）"
+
+    with col2:
         n_clusters = st.number_input(
             "クラスタ数",
             min_value=2,
             max_value=30,
             value=8,
             step=1,
-            help="KMeansのクラスタ数 / HDBSCANの目安"
+            disabled=use_hdbscan,
+            help="KMeans使用時のクラスタ数"
         )
-        settings['kmeans_n'] = n_clusters
-
-    with col2:
-        run_clustering = st.button("クラスタリング実行", type="primary")
+        settings['kmeans_n'] = int(n_clusters)
+        settings['use_hdbscan'] = use_hdbscan
 
     with col3:
+        run_clustering = st.button("クラスタリング実行", type="primary")
+
+    with col4:
         if settings['use_api'] and not st.session_state.llm_provider:
-            st.warning("APIキーが未設定です。TF-IDFモードに切り替えるか、サイドバーでキーを設定してください")
+            st.warning("APIキー未設定")
         elif settings['use_api'] and st.session_state.llm_provider and not st.session_state.llm_provider.supports_embedding:
-            st.warning(f"{st.session_state.llm_provider.name}は埋め込みをサポートしていません。TF-IDFモードに切り替えてください")
+            st.warning("埋め込み非対応")
 
     if run_clustering:
         run_clustering_pipeline(df_filtered, settings)

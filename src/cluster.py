@@ -185,40 +185,19 @@ class TextClusterer:
             return self._cluster_kmeans(embeddings)
 
     def _cluster_kmeans(self, embeddings: np.ndarray) -> Tuple[np.ndarray, int, int]:
-        """KMeansでクラスタリング"""
+        """KMeansでクラスタリング（指定されたクラスタ数を使用）"""
         n_samples = embeddings.shape[0]
-        n_clusters = min(self.kmeans_n_clusters, max(2, n_samples // 3))
+        # 指定されたクラスタ数を使用（サンプル数を超えない範囲で）
+        n_clusters = min(self.kmeans_n_clusters, max(2, n_samples - 1))
 
-        # 最適なクラスタ数を探索（2〜n_clusters）
-        best_score = -1
-        best_k = n_clusters
-        best_labels = None
+        kmeans = KMeans(
+            n_clusters=n_clusters,
+            random_state=self.random_state,
+            n_init=10
+        )
+        labels = kmeans.fit_predict(embeddings)
 
-        for k in range(2, min(n_clusters + 1, n_samples)):
-            try:
-                kmeans = KMeans(
-                    n_clusters=k,
-                    random_state=self.random_state,
-                    n_init=10
-                )
-                labels = kmeans.fit_predict(embeddings)
-
-                if len(set(labels)) > 1:
-                    score = silhouette_score(embeddings, labels)
-                    if score > best_score:
-                        best_score = score
-                        best_k = k
-                        best_labels = labels
-            except Exception:
-                continue
-
-        if best_labels is None:
-            # フォールバック
-            kmeans = KMeans(n_clusters=2, random_state=self.random_state)
-            best_labels = kmeans.fit_predict(embeddings)
-            best_k = 2
-
-        return best_labels, best_k, 0
+        return labels, n_clusters, 0
 
     def fit(self, texts: List[str], use_hdbscan: bool = True) -> ClusteringResult:
         """
