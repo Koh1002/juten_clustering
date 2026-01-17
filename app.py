@@ -259,25 +259,12 @@ def render_tab_import():
     """データ取込/成形タブ"""
     st.header("📥 データ取込・成形")
 
-    col1, col2 = st.columns(2)
+    st.subheader("📁 Excelファイル選択")
+
+    col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.subheader("方法1: ファイルアップロード")
-        uploaded_files = st.file_uploader(
-            "Excelファイルを選択（複数可）",
-            type=['xlsx', 'xls'],
-            accept_multiple_files=True
-        )
-
-        if uploaded_files:
-            if st.button("アップロードファイルを処理", key="btn_upload"):
-                process_files(file_objects=uploaded_files)
-
-    with col2:
-        st.subheader("方法2: ローカルファイル選択")
-        st.info("tkinterダイアログで選択（ローカル実行時のみ）")
-
-        if st.button("ファイル/フォルダを選択", key="btn_dialog"):
+        if st.button("ファイル/フォルダを選択", type="primary", key="btn_dialog"):
             try:
                 file_paths, mode = select_files_with_dialog()
                 if file_paths:
@@ -288,10 +275,20 @@ def render_tab_import():
             except Exception as e:
                 st.error(f"ダイアログエラー: {e}")
 
+    with col2:
         if 'selected_files' in st.session_state and st.session_state['selected_files']:
-            st.write(f"選択済み: {len(st.session_state['selected_files'])}件")
-            if st.button("選択ファイルを処理", key="btn_process_local"):
-                process_files(file_paths=st.session_state['selected_files'])
+            if st.button("🗑️ 選択をクリア", key="btn_clear"):
+                st.session_state['selected_files'] = []
+                st.rerun()
+
+    # 選択ファイル表示と処理
+    if 'selected_files' in st.session_state and st.session_state['selected_files']:
+        with st.expander(f"選択済みファイル（{len(st.session_state['selected_files'])}件）", expanded=True):
+            for f in st.session_state['selected_files']:
+                st.write(f"- {os.path.basename(f)}")
+
+        if st.button("📊 ファイルを処理", type="primary", key="btn_process_local"):
+            process_files(file_paths=st.session_state['selected_files'])
 
     # 処理結果表示
     if st.session_state.parse_errors:

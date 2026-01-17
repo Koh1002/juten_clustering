@@ -118,12 +118,19 @@ def get_category_name(category: Optional[str]) -> str:
 
 def join_non_empty_cells(cells: list) -> str:
     """
-    空でないセルをスペース結合
+    空でないセルをスペース結合（重複除去）
+
+    結合セル解除後、同じ値が複数セルに入ることがあるため、
+    重複を除去してユニークな値のみを結合する。
     """
+    seen = set()
     result = []
     for cell in cells:
         if cell is not None and str(cell).strip():
-            result.append(normalize_text(str(cell)))
+            normalized = normalize_text(str(cell))
+            if normalized not in seen:
+                seen.add(normalized)
+                result.append(normalized)
     return ' '.join(result)
 
 
