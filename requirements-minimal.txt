@@ -1,12 +1,10 @@
-# Minimal requirements (without LLM SDKs)
-# Use this if you have installation issues
-# TF-IDF mode will work without API keys
+# Minimal requirements for Python 3.14
+# TF-IDF + PCA + KMeans mode (no API keys needed)
 
 streamlit
 openpyxl
 pandas
-pyarrow
-scikit-learn
+scikit-learn>=1.3.0
 plotly
 numpy
 requests

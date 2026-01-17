@@ -2,13 +2,16 @@
 クラスタリングモジュール
 Embedding → UMAP → HDBSCAN
 ダミーモード: TF-IDF + KMeans
+
+Note: sklearn.cluster.HDBSCAN を使用（Python 3.14対応）
+      外部hdbscanパッケージは不要
 """
 
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, HDBSCAN
 from sklearn.metrics import silhouette_score
 import logging
 
@@ -150,15 +153,14 @@ class TextClusterer:
         return embeddings_2d
 
     def _cluster_hdbscan(self, embeddings: np.ndarray) -> Tuple[np.ndarray, int, int]:
-        """HDBSCANでクラスタリング"""
+        """HDBSCANでクラスタリング（sklearn.cluster.HDBSCAN使用）"""
         try:
-            import hdbscan
-
             n_samples = embeddings.shape[0]
             min_cluster_size = min(self.hdbscan_min_cluster_size, max(2, n_samples // 5))
             min_samples = min(self.hdbscan_min_samples, min_cluster_size)
 
-            clusterer = hdbscan.HDBSCAN(
+            # sklearn.cluster.HDBSCAN を使用（Python 3.14対応）
+            clusterer = HDBSCAN(
                 min_cluster_size=min_cluster_size,
                 min_samples=min_samples,
                 metric='euclidean',
